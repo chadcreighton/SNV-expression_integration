@@ -1,0 +1,69 @@
+expression<-read.table("D:\\github\\SNV_for_github\\expression_log.txt")
+SNV<-read.table("D:\\github\\SNV_for_github\\SNV_1kb_up.txt")
+SV_distance<-read.table("D:\\github\\SNV_for_github\\SV_distance.txt")
+cancer_type<-read.table("D:\\github\\SNV_for_github\\cancer_type.txt")
+covariates<-read.table("D:\\github\\SNV_for_github\\mut_count.txt")
+expression<-as.matrix(expression)
+SNV<-as.matrix(SNV)
+SV_distance<-as.matrix(SV_distance)
+cancer_type<-as.matrix(cancer_type)
+covariates<-as.matrix(covariates)
+
+
+SNV_integration<-function(expression, SNV, SV_distance, cancer_type, covariates) {
+
+
+cat("starting time is",date(),"\n")
+J <- dim(expression)[2]
+I <- dim(expression)[1]
+
+
+beta<- array(0,c(I,8))
+
+for(i in 1:I) {
+
+beta[i,1]<-1
+beta[i,2]<-1
+beta[i,3]<-1
+beta[i,4]<-1
+beta[i,5]<-1
+beta[i,6]<-1
+beta[i,7]<-1
+beta[i,8]<-1
+
+
+if(sd(SNV[i,])>0.001) {
+
+#cancer type
+z1<-lm(expression[i,]~SNV[i,]+as.factor(cancer_type[1,]))
+beta[i,1]<-summary(z1)$coefficients[2,3]
+beta[i,2]<-summary(z1)$coefficients[2,4]
+
+#cancer type+gender
+z1<-lm(expression[i,]~SNV[i,]+as.factor(cancer_type[1,])+as.factor(cancer_type[2,]))
+beta[i,3]<-summary(z1)$coefficients[2,3]
+beta[i,4]<-summary(z1)$coefficients[2,4]
+
+
+#cancer type+gender+num mut count log
+z1<-lm(expression[i,]~SNV[i,]+as.factor(cancer_type[1,])+as.factor(cancer_type[2,])+covariates[2,])
+beta[i,5]<-summary(z1)$coefficients[2,3]
+beta[i,6]<-summary(z1)$coefficients[2,4]
+
+#cancer type+gender+mut count log+SV BP pattern
+z1<-lm(expression[i,]~SNV[i,]+SV_distance[i,]+as.factor(cancer_type[1,])+as.factor(cancer_type[2,])+covariates[2,])
+beta[i,7]<-summary(z1)$coefficients[2,3]
+beta[i,8]<-summary(z1)$coefficients[2,4]
+
+}
+
+  cat(i,"\n")
+} # end of I
+
+cat("ending time is",date(),"\n")
+
+return(beta)
+}
+
+beta<-SNV_integration(expression, SNV, SV_distance, cancer_type, covariates)
+write.table(beta, file = "D:\\github\\SNV_for_github\\lm_test_results_SNV_1kb_up.txt")
